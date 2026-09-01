@@ -661,20 +661,34 @@
       }
     }
 
-    // ドラッグ＆ドロップ登録
-    ['merge-dropzone', 'split-dropzone', 'edit-dropzone'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag-over'); });
-      el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
-      el.addEventListener('drop', (e) => {
-        e.preventDefault();
-        el.classList.remove('drag-over');
-        if (id.includes('merge')) handleMergeFiles(e.dataTransfer.files);
-        else if (id.includes('split')) handleSplitFile(e.dataTransfer.files[0]);
-        else if (id.includes('edit')) handleEditFiles(e.dataTransfer.files);
-      });
-    });
+    // ドラッグ＆ドロップ登録 (バグ修正版)
+['merge-dropzone', 'split-dropzone', 'edit-dropzone'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  // ブラウザ標準のファイル開き動作を抑止
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    el.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    }, false);
+  });
+
+  el.addEventListener('dragover', () => el.classList.add('drag-over'));
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  
+  el.addEventListener('drop', (e) => {
+    el.classList.remove('drag-over');
+    const dt = e.dataTransfer;
+    const files = dt.files;
+
+    if (files && files.length > 0) {
+      if (id.includes('merge')) handleMergeFiles(files);
+      else if (id.includes('split')) handleSplitFile(files[0]);
+      else if (id.includes('edit')) handleEditFiles(files);
+    }
+  });
+});
   </script>
 </body>
 </html>
