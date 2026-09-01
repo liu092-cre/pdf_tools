@@ -69,7 +69,8 @@
 
       <!-- 上: ファイル選択/D&D -->
       <section class="bg-white rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 p-8 text-center transition cursor-pointer" id="merge-dropzone" onclick="document.getElementById('merge-file-input').click()">
-        <input type="file" id="merge-file-input" multiple accept="application/pdf" class="hidden" onchange="handleMergeFiles(this.files)">
+        <!-- 追加 onclick="event.stopPropagation()" 防止事件冒泡 -->
+        <input type="file" id="merge-file-input" multiple accept="application/pdf" class="hidden" onchange="handleMergeFiles(this.files)" onclick="event.stopPropagation()">
         <div class="text-4xl mb-2">📂</div>
         <p class="text-slate-700 font-semibold text-base mb-1">結合するPDFファイルをここにドラッグ＆ドロップ</p>
         <p class="text-slate-400 text-xs mb-3">またはクリックしてファイルを選択（複数選択可）</p>
@@ -118,7 +119,8 @@
 
       <!-- 上: ファイル選択/D&D -->
       <section class="bg-white rounded-xl border-2 border-dashed border-slate-300 hover:border-amber-400 p-8 text-center transition cursor-pointer" id="split-dropzone" onclick="document.getElementById('split-file-input').click()">
-        <input type="file" id="split-file-input" accept="application/pdf" class="hidden" onchange="handleSplitFile(this.files[0])">
+        <!-- 追加 onclick="event.stopPropagation()" 防止事件冒泡 -->
+        <input type="file" id="split-file-input" accept="application/pdf" class="hidden" onchange="handleSplitFile(this.files[0])" onclick="event.stopPropagation()">
         <div class="text-4xl mb-2">✂️</div>
         <p class="text-slate-700 font-semibold text-base mb-1">分割するPDFファイルをドラッグ＆ドロップ</p>
         <p class="text-slate-400 text-xs mb-3">またはクリックしてファイルを選択</p>
@@ -179,7 +181,8 @@
 
       <!-- 上: ファイル選択/D&D -->
       <section class="bg-white rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 p-8 text-center transition cursor-pointer" id="edit-dropzone" onclick="document.getElementById('edit-file-input').click()">
-        <input type="file" id="edit-file-input" accept="application/pdf" multiple class="hidden" onchange="handleEditFiles(this.files)">
+        <!-- 追加 onclick="event.stopPropagation()" 防止事件冒泡 -->
+        <input type="file" id="edit-file-input" accept="application/pdf" multiple class="hidden" onchange="handleEditFiles(this.files)" onclick="event.stopPropagation()">
         <div class="text-4xl mb-2">🔄</div>
         <p class="text-slate-700 font-semibold text-base mb-1">編集するPDFファイルをドラッグ＆ドロップ</p>
         <p class="text-slate-400 text-xs mb-3">複数ファイルの追加読み込みも可能</p>
@@ -251,7 +254,11 @@
       const text = document.getElementById('toast-msg');
       text.textContent = msg;
       toast.classList.remove('opacity-0', 'pointer-events-none');
-      setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), duration);
+      // 避免之前的 timeout 蓋掉新的 toast
+      if(window.toastTimeout) clearTimeout(window.toastTimeout);
+      if (duration > 0) {
+        window.toastTimeout = setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), duration);
+      }
     }
 
     function switchTab(tab) {
@@ -283,18 +290,35 @@
 
     // ==================== 結合ロジック ====================
     async function handleMergeFiles(files) {
-      for (const file of files) {
-        if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) continue;
-        const arrayBuffer = await file.arrayBuffer();
-        const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-        mergeFiles.push({
-          name: file.name,
-          size: file.size,
-          data: arrayBuffer,
-          pages: pdfDoc.getPageCount()
-        });
+      if (!files || files.length === 0) return;
+      showToast('読み込み中...', 0); // 永久顯示直到處理完
+      document.body.style.cursor = 'wait';
+      
+      try {
+        const newFiles = []; // 使用暫存陣列，避免處理途中狀態不一致
+        for (const file of files) {
+          if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) continue;
+          const arrayBuffer = await file.arrayBuffer();
+          const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+          newFiles.push({
+            name: file.name,
+            size: file.size,
+            data: arrayBuffer,
+            pages: pdfDoc.getPageCount()
+          });
+        }
+        // 處理完畢後，一次性追加到清單中
+        mergeFiles.push(...newFiles);
+        renderMergeList();
+        showToast('ファイルの追加が完了しました', 3000);
+      } catch (err) {
+        alert('読み込みエラー: ' + err.message);
+        showToast('エラーが発生しました', 3000);
+      } finally {
+        // 重點修正：徹底清空 input.value，確保下次選相同檔案能觸發
+        document.getElementById('merge-file-input').value = '';
+        document.body.style.cursor = 'default';
       }
-      renderMergeList();
     }
 
     function renderMergeList() {
@@ -357,7 +381,7 @@
 
     async function executeMerge() {
       if (mergeFiles.length === 0) return;
-      showToast('PDFを結合中...');
+      showToast('PDFを結合中...', 0);
       try {
         const outDoc = await PDFLib.PDFDocument.create();
         for (const file of mergeFiles) {
@@ -368,27 +392,41 @@
         const pdfBytes = await outDoc.save();
         const filename = document.getElementById('merge-filename').value.trim() || 'merged_document.pdf';
         triggerDownload(pdfBytes, filename.endsWith('.pdf') ? filename : filename + '.pdf');
-        showToast('結合が完了しました！');
+        showToast('結合が完了しました！', 3000);
       } catch (err) {
         alert('結合エラー: ' + err.message);
+        showToast('エラーが発生しました', 3000);
       }
     }
 
     // ==================== 分割ロジック ====================
     async function handleSplitFile(file) {
       if (!file) return;
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-      splitPagesCount = pdfDoc.getPageCount();
-      splitFile = { name: file.name, size: file.size, data: arrayBuffer, doc: pdfDoc };
+      showToast('読み込み中...', 0);
+      document.body.style.cursor = 'wait';
 
-      document.getElementById('split-doc-name').textContent = file.name;
-      document.getElementById('split-doc-info').textContent = `全 ${splitPagesCount} ページ`;
-      document.getElementById('split-config-section').classList.remove('hidden');
-      document.getElementById('split-submit-btn').disabled = false;
-      document.getElementById('split-filename').value = file.name.replace(/\.pdf$/i, '') + '_split.pdf';
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+        splitPagesCount = pdfDoc.getPageCount();
+        splitFile = { name: file.name, size: file.size, data: arrayBuffer, doc: pdfDoc };
 
-      renderSplitThumbnails();
+        document.getElementById('split-doc-name').textContent = file.name;
+        document.getElementById('split-doc-info').textContent = `全 ${splitPagesCount} ページ`;
+        document.getElementById('split-config-section').classList.remove('hidden');
+        document.getElementById('split-submit-btn').disabled = false;
+        document.getElementById('split-filename').value = file.name.replace(/\.pdf$/i, '') + '_split.pdf';
+
+        await renderSplitThumbnails();
+        showToast('読み込みが完了しました', 3000);
+      } catch(err) {
+        alert('読み込みエラー: ' + err.message);
+        showToast('エラーが発生しました', 3000);
+      } finally {
+        // 重點修正：清空 input.value
+        document.getElementById('split-file-input').value = '';
+        document.body.style.cursor = 'default';
+      }
     }
 
     async function renderSplitThumbnails() {
@@ -485,7 +523,7 @@
 
     async function executeSplit() {
       if (!splitFile) return;
-      showToast('分割処理中...');
+      showToast('分割処理中...', 0);
       try {
         if (splitMode === 'all-single') {
           const zip = new JSZip();
@@ -502,12 +540,13 @@
           }
           const zipBlob = await zip.generateAsync({ type: 'blob' });
           triggerDownload(zipBlob, `${baseName}_all_pages.zip`, 'application/zip');
-          showToast('ZIPダウンロードが完了しました！');
+          showToast('ZIPダウンロードが完了しました！', 3000);
         } else {
           const rangeStr = document.getElementById('split-range-input').value.trim();
           const indices = parseRange(rangeStr, splitPagesCount);
           if (indices.length === 0) {
             alert('抽出するページ番号または範囲を指定してください');
+            showToast('', 0);
             return;
           }
           const srcDoc = await PDFLib.PDFDocument.load(splitFile.data, { ignoreEncryption: true });
@@ -517,41 +556,59 @@
           const pdfBytes = await outDoc.save();
           const filename = document.getElementById('split-filename').value.trim() || 'split.pdf';
           triggerDownload(pdfBytes, filename.endsWith('.pdf') ? filename : filename + '.pdf');
-          showToast('分割抽出が完了しました！');
+          showToast('分割抽出が完了しました！', 3000);
         }
       } catch (err) {
         alert('分割エラー: ' + err.message);
+        showToast('エラーが発生しました', 3000);
       }
     }
 
     // ==================== ページ編集ロジック ====================
     async function handleEditFiles(files) {
-      for (const file of files) {
-        if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) continue;
-        const arrayBuffer = await file.arrayBuffer();
-        const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-        const count = pdfDoc.getPageCount();
-        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
-        const pdf = await loadingTask.promise;
+      if (!files || files.length === 0) return;
+      showToast('読み込み中...', 0);
+      document.body.style.cursor = 'wait';
 
-        for (let i = 0; i < count; i++) {
-          const page = pdfDoc.getPage(i);
-          const pageObj = await pdf.getPage(i + 1);
-          const viewport = pageObj.getViewport({ scale: 0.35 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          await pageObj.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      try {
+        const newPages = []; // 暫存陣列，避免處理中途渲染破壞陣列狀態
+        for (const file of files) {
+          if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) continue;
+          const arrayBuffer = await file.arrayBuffer();
+          const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+          const count = pdfDoc.getPageCount();
+          const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
+          const pdf = await loadingTask.promise;
 
-          editPages.push({
-            sourceData: arrayBuffer,
-            originalIndex: i,
-            rotation: page.getRotation().angle || 0,
-            thumbnail: canvas.toDataURL('image/jpeg', 0.8)
-          });
+          for (let i = 0; i < count; i++) {
+            const page = pdfDoc.getPage(i);
+            const pageObj = await pdf.getPage(i + 1);
+            const viewport = pageObj.getViewport({ scale: 0.35 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await pageObj.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+            newPages.push({
+              sourceData: arrayBuffer,
+              originalIndex: i,
+              rotation: page.getRotation().angle || 0,
+              thumbnail: canvas.toDataURL('image/jpeg', 0.8)
+            });
+          }
         }
+        // 處理完畢後，一次性追加到現有頁面陣列後方
+        editPages.push(...newPages);
+        renderEditGrid();
+        showToast('ページの追加が完了しました', 3000);
+      } catch (err) {
+        alert('読み込みエラー: ' + err.message);
+        showToast('エラーが発生しました', 3000);
+      } finally {
+        // 重點修正：清空 input.value
+        document.getElementById('edit-file-input').value = '';
+        document.body.style.cursor = 'default';
       }
-      renderEditGrid();
     }
 
     function renderEditGrid() {
@@ -636,7 +693,7 @@
 
     async function executeEditSave() {
       if (editPages.length === 0) return;
-      showToast('編集したPDFを作成中...');
+      showToast('編集したPDFを作成中...', 0);
       try {
         const outDoc = await PDFLib.PDFDocument.create();
         const docCache = new Map();
@@ -655,40 +712,41 @@
         const pdfBytes = await outDoc.save();
         const filename = document.getElementById('edit-filename').value.trim() || 'edited_document.pdf';
         triggerDownload(pdfBytes, filename.endsWith('.pdf') ? filename : filename + '.pdf');
-        showToast('保存が完了しました！');
+        showToast('保存が完了しました！', 3000);
       } catch (err) {
         alert('保存エラー: ' + err.message);
+        showToast('エラーが発生しました', 3000);
       }
     }
 
     // ドラッグ＆ドロップ登録 (バグ修正版)
-['merge-dropzone', 'split-dropzone', 'edit-dropzone'].forEach(id => {
-  const el = document.getElementById(id);
-  if (!el) return;
+    ['merge-dropzone', 'split-dropzone', 'edit-dropzone'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
 
-  // ブラウザ標準のファイル開き動作を抑止
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    el.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    }, false);
-  });
+      // ブラウザ標準のファイル開き動作を抑止
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        el.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }, false);
+      });
 
-  el.addEventListener('dragover', () => el.classList.add('drag-over'));
-  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
-  
-  el.addEventListener('drop', (e) => {
-    el.classList.remove('drag-over');
-    const dt = e.dataTransfer;
-    const files = dt.files;
+      el.addEventListener('dragover', () => el.classList.add('drag-over'));
+      el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+      
+      el.addEventListener('drop', (e) => {
+        el.classList.remove('drag-over');
+        const dt = e.dataTransfer;
+        const files = dt.files;
 
-    if (files && files.length > 0) {
-      if (id.includes('merge')) handleMergeFiles(files);
-      else if (id.includes('split')) handleSplitFile(files[0]);
-      else if (id.includes('edit')) handleEditFiles(files);
-    }
-  });
-});
+        if (files && files.length > 0) {
+          if (id.includes('merge')) handleMergeFiles(files);
+          else if (id.includes('split')) handleSplitFile(files[0]);
+          else if (id.includes('edit')) handleEditFiles(files);
+        }
+      });
+    });
   </script>
 </body>
 </html>
