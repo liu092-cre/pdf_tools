@@ -88,7 +88,7 @@
         </section>
 
         <!-- 読み込み済みファイル一覧・順序並び替え -->
-        <section id="merge-files-section" class="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm hidden min-h-[200px] overflow-hidden">
+        <section id="merge-files-section" class="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm hidden overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl shrink-0">
             <h2 class="text-sm font-bold text-gray-800 flex items-center gap-2">
               結合ファイル一覧 (<span id="merge-file-count" class="text-red-600">0</span>件)
@@ -97,7 +97,7 @@
               全クリア
             </button>
           </div>
-          <div class="flex-1 overflow-y-auto p-4">
+          <div class="p-4">
             <ul id="merge-file-list" class="space-y-2"></ul>
           </div>
         </section>
@@ -138,12 +138,17 @@
         </section>
 
         <!-- ページプレビュー & 分割モード設定 -->
-        <section id="split-config-section" class="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm hidden min-h-[300px] overflow-hidden">
+        <section id="split-config-section" class="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm hidden overflow-hidden">
           <div class="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl shrink-0">
             <div class="flex items-center justify-between mb-4">
-              <div>
-                <h3 class="font-bold text-gray-800 text-sm" id="split-doc-name">-</h3>
-                <p class="text-xs text-gray-500" id="split-doc-info">全 0 ページ</p>
+              <div class="flex items-center gap-4">
+                <div>
+                  <h3 class="font-bold text-gray-800 text-sm" id="split-doc-name">-</h3>
+                  <p class="text-xs text-gray-500" id="split-doc-info">全 0 ページ</p>
+                </div>
+                <button onclick="clearSplitWorkspace()" class="text-[10px] px-2 py-1 bg-white border border-gray-300 rounded shadow-sm hover:bg-red-50 text-red-600 font-medium transition" title="現在のファイルをクリアしてやり直す">
+                  ✕ ファイルをクリア
+                </button>
               </div>
               <div class="flex gap-2">
                 <button onclick="selectSplitMode('range')" id="mode-range-btn" class="px-3 py-1.5 rounded text-xs font-bold bg-gray-800 text-white shadow-sm transition">範囲指定</button>
@@ -158,7 +163,7 @@
             </div>
           </div>
 
-          <div class="flex-1 overflow-y-auto p-4 bg-[#f8f9fa]">
+          <div class="p-4 bg-[#f8f9fa]">
             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">ページ一覧（クリックで抽出対象を切替）</p>
             <div id="split-thumbnails-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4"></div>
           </div>
@@ -200,12 +205,15 @@
         </section>
 
         <!-- ページグリッド ＆ 操作ツールバー -->
-        <section id="edit-pages-section" class="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm hidden min-h-[300px] overflow-hidden">
+        <section id="edit-pages-section" class="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm hidden overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3 bg-gray-50 rounded-t-xl shrink-0">
-            <div class="flex items-center gap-4">
+            <div class="flex flex-wrap items-center gap-3">
               <span class="text-sm font-bold text-gray-800">Workspace: <span class="text-gray-500 font-normal"><span id="edit-page-total">0</span> pages total</span></span>
-              <div class="h-4 w-px bg-gray-300"></div>
-              <span class="text-[10px] text-gray-400">カードをドラッグして順序入替可能</span>
+              <button onclick="clearEditWorkspace()" class="text-[10px] px-2 py-1 bg-white border border-gray-300 rounded shadow-sm hover:bg-red-50 text-red-600 font-medium transition" title="現在の読み込み状態をリセットする">
+                ✕ 現在のPDFをクリア
+              </button>
+              <div class="hidden sm:block h-4 w-px bg-gray-300"></div>
+              <span class="hidden sm:inline text-[10px] text-gray-400">カードをドラッグして順序入替可能</span>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <button onclick="rotateAllPages(90)" class="text-[10px] px-2 py-1 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 text-gray-600 font-medium transition">
@@ -220,7 +228,7 @@
             </div>
           </div>
 
-          <div class="flex-1 overflow-y-auto p-6 bg-[#f8f9fa]">
+          <div class="p-6 bg-[#f8f9fa]">
             <div id="edit-pages-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 content-start"></div>
           </div>
         </section>
@@ -262,9 +270,9 @@
       if (typeof window.JSZip === 'undefined') missingLibs.push('JSZip');
 
       if (missingLibs.length > 0) {
-        const errorMsg = '【初期化エラー】以下のライブラリが読み込めませんでした：\n' + missingLibs.join('\n');
+        const errorMsg = '【初期化エラー】以下のライブラリが読み込めませんでした：\\n' + missingLibs.join('\\n');
         console.error(errorMsg);
-        alert(errorMsg + '\n\nインターネット接続を確認するか、CDNのURLが正しいか確認してください。');
+        alert(errorMsg + '\\n\\nインターネット接続を確認するか、CDNのURLが正しいか確認してください。');
         
         // エラー発生時は全体を半透明にして操作不可にする
         document.body.style.pointerEvents = 'none';
@@ -561,6 +569,20 @@
       }
     }
 
+    function clearSplitWorkspace() {
+      splitFile = null;
+      splitPagesCount = 0;
+      document.getElementById('split-doc-name').textContent = '-';
+      document.getElementById('split-doc-info').textContent = '全 0 ページ';
+      document.getElementById('split-range-input').value = '';
+      document.getElementById('split-filename').value = 'split_document.pdf';
+      document.getElementById('split-thumbnails-grid').innerHTML = '';
+      document.getElementById('split-config-section').classList.add('hidden');
+      document.getElementById('split-submit-btn').disabled = true;
+      document.getElementById('split-file-input').value = '';
+      selectSplitMode('range');
+    }
+
     async function executeSplit() {
       if (!splitFile) return;
       showToast('分割処理中...', 0);
@@ -730,6 +752,13 @@
 
     function clearAllEditPages() {
       editPages = [];
+      renderEditGrid();
+    }
+
+    function clearEditWorkspace() {
+      editPages = [];
+      document.getElementById('edit-filename').value = 'edited_document.pdf';
+      document.getElementById('edit-file-input').value = '';
       renderEditGrid();
     }
 
