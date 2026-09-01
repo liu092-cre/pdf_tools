@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>多機能PDF編集ツール (PDF Tool Studio)</title>
+  <title>PDF Tool Studio</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- PDF-LIB CDN (PDF結合・分割・編集用) -->
-  <script src="https://unpkg.com/pdf-lib@1.17.9/dist/pdf-lib.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <!-- PDF.js CDN (サムネイルレンダリング用) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <!-- JSZip (全ページ分割時のZIP保存用) -->
@@ -18,229 +18,260 @@
   <style>
     .page-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
     .page-card:hover { transform: translateY(-2px); }
-    .drag-over { border-color: #4f46e5 !important; background-color: #eef2ff !important; }
+    .drag-over { border-color: #f87171 !important; background-color: #fef2f2 !important; }
+    /* Hide scrollbar for clean look */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 </head>
-<body class="bg-slate-100/70 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+<body class="h-full bg-[#f0f2f5] flex flex-col font-sans overflow-hidden text-[#1a1a1a]">
 
-  <!-- ヘッダー -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-    <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-          📑
-        </div>
-        <div>
-          <h1 class="text-base font-bold text-slate-900 leading-tight">PDF Tool Studio</h1>
-          <p class="text-xs text-slate-500">完全クライアントサイド動作・安全ローカル処理</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2 text-xs">
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> サーバー送信ゼロ (ローカル完結)
-        </span>
-      </div>
+  <!-- Header -->
+  <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white font-bold text-lg">P</div>
+      <h1 class="font-bold text-xl tracking-tight">PDF Tool <span class="text-red-600">Studio</span></h1>
+      <span class="bg-gray-100 text-[10px] px-2 py-0.5 rounded border border-gray-200 font-mono ml-2 uppercase hidden sm:inline-block">Local Processing</span>
     </div>
-
-    <!-- 最上部 インデックス切替タブ (3機能) -->
-    <div class="max-w-6xl mx-auto px-4 pt-1 flex border-b border-slate-200 gap-2">
-      <button id="tab-merge-btn" onclick="switchTab('merge')" class="tab-btn px-5 py-2.5 font-bold text-sm border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-2 transition">
-        <span>🔗</span> 1. PDF結合 (Merge)
-      </button>
-      <button id="tab-split-btn" onclick="switchTab('split')" class="tab-btn px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 transition">
-        <span>✂️</span> 2. PDF分割 (Split)
-      </button>
-      <button id="tab-edit-btn" onclick="switchTab('edit')" class="tab-btn px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 transition">
-        <span>🔄</span> 3. ページ編集 (並び替え・回転・削除)
-      </button>
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 text-xs text-gray-500">
+        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+        <span class="hidden sm:inline">Client-Side Only</span>
+      </div>
     </div>
   </header>
 
-  <!-- メインコンテンツ -->
-  <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full">
-
-    <!-- ==================== 1. 結合 (Merge) 画面 ==================== -->
-    <div id="view-merge" class="tab-content space-y-6">
-      <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-900 flex items-center justify-between">
-        <div>
-          <span class="font-bold">【PDF結合モード】</span> 複数のPDFファイルを指定した順序で1つのPDFドキュメントに結合します。
-        </div>
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <nav class="w-56 bg-white border-r border-gray-200 flex flex-col p-4 shrink-0 overflow-y-auto">
+      <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 px-2">Primary Tools</div>
+      <div class="space-y-1">
+        <button id="tab-merge-btn" onclick="switchTab('merge')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-3 bg-gray-100 text-red-600 transition">
+          <span class="w-5 text-center text-lg">≡</span> PDF結合 (Merge)
+        </button>
+        <button id="tab-split-btn" onclick="switchTab('split')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-3 text-gray-600 hover:bg-gray-50 transition">
+          <span class="w-5 text-center text-lg">✂</span> PDF分割 (Split)
+        </button>
+        <button id="tab-edit-btn" onclick="switchTab('edit')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-3 text-gray-600 hover:bg-gray-50 transition">
+          <span class="w-5 text-center text-lg">✎</span> ページ編集 (Edit)
+        </button>
       </div>
+      
+      <!-- Status Queue -->
+      <div class="mt-8 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 px-2">Status</div>
+      <div class="flex-1 space-y-2 overflow-hidden px-2">
+        <p class="text-xs text-gray-500 leading-relaxed">
+          すべての処理はブラウザ内で完結します。データがサーバーに送信されることはありません。
+        </p>
+      </div>
+    </nav>
 
-      <!-- 上: ファイル選択/D&D -->
-      <section class="bg-white rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 p-8 text-center transition cursor-pointer" id="merge-dropzone" onclick="document.getElementById('merge-file-input').click()">
-        <!-- 追加 onclick="event.stopPropagation()" 防止事件冒泡 -->
-        <input type="file" id="merge-file-input" multiple accept="application/pdf" class="hidden" onchange="handleMergeFiles(this.files)" onclick="event.stopPropagation()">
-        <div class="text-4xl mb-2">📂</div>
-        <p class="text-slate-700 font-semibold text-base mb-1">結合するPDFファイルをここにドラッグ＆ドロップ</p>
-        <p class="text-slate-400 text-xs mb-3">またはクリックしてファイルを選択（複数選択可）</p>
-        <span class="inline-block px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs">
-          ファイルを選択する
-        </span>
-      </section>
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col bg-[#f8f9fa] overflow-y-auto overflow-x-hidden relative">
+      
+      <!-- ==================== 1. 結合 (Merge) 画面 ==================== -->
+      <div id="view-merge" class="tab-content flex-1 flex flex-col p-6 gap-6">
+        <div class="shrink-0 bg-white border border-gray-200 rounded p-3 text-sm text-gray-600 shadow-sm flex items-center">
+          <span class="font-bold mr-2 text-gray-800">【PDF結合モード】</span> 複数のPDFファイルを指定した順序で1つのPDFに結合します。
+        </div>
 
-      <!-- 中: 読み込み済みファイル一覧・順序並び替え -->
-      <section id="merge-files-section" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hidden">
-        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
-          <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <span>📑</span> 結合ファイル一覧 (<span id="merge-file-count">0</span>件)
+        <!-- ファイル選択/D&D -->
+        <section class="shrink-0 w-full h-32 border-2 border-dashed border-gray-300 rounded-xl bg-white flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors" id="merge-dropzone" onclick="document.getElementById('merge-file-input').click()">
+          <input type="file" id="merge-file-input" multiple accept="application/pdf" class="hidden" onchange="handleMergeFiles(this.files)" onclick="event.stopPropagation()">
+          <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-2 pointer-events-none">
+            <span class="text-xl font-bold">+</span>
+          </div>
+          <p class="text-sm font-semibold pointer-events-none text-gray-800">ファイルを追加する</p>
+          <p class="text-xs text-gray-400 mt-1 pointer-events-none">ドラッグ＆ドロップでも追加できます (複数選択可)</p>
+        </section>
+
+        <!-- 読み込み済みファイル一覧・順序並び替え -->
+        <section id="merge-files-section" class="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm hidden min-h-[200px] overflow-hidden">
+          <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl shrink-0">
+            <h2 class="text-sm font-bold text-gray-800 flex items-center gap-2">
+              結合ファイル一覧 (<span id="merge-file-count" class="text-red-600">0</span>件)
+            </h2>
+            <button onclick="clearMergeFiles()" class="text-[10px] px-3 py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 text-gray-600 font-medium transition">
+              全クリア
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto p-4">
+            <ul id="merge-file-list" class="space-y-2"></ul>
+          </div>
+        </section>
+
+        <!-- 出力設定 & ダウンロード -->
+        <section class="shrink-0 bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <h2 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+            出力設定 ＆ 結合実行
           </h2>
-          <button onclick="clearMergeFiles()" class="text-xs text-rose-600 hover:text-rose-700 font-medium">
-            全クリア
-          </button>
-        </div>
-        <ul id="merge-file-list" class="space-y-2 mb-4"></ul>
-      </section>
-
-      <!-- 下: 出力設定 & ダウンロード -->
-      <section class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-        <h2 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-          <span>💾</span> 出力設定 ＆ 結合実行
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div class="md:col-span-2">
-            <label class="block text-xs font-semibold text-slate-700 mb-1">出力ファイル名</label>
-            <input type="text" id="merge-filename" value="merged_document.pdf" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-indigo-600">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">出力ファイル名</label>
+              <input type="text" id="merge-filename" value="merged_document.pdf" class="w-full px-3.5 py-2 border border-gray-300 rounded bg-gray-50 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition">
+            </div>
+            <div>
+              <button id="merge-submit-btn" onclick="executeMerge()" disabled class="w-full h-[38px] rounded bg-red-600 text-white font-bold text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]">
+                結合してダウンロード
+              </button>
+            </div>
           </div>
-          <div>
-            <button id="merge-submit-btn" onclick="executeMerge()" disabled class="w-full py-2.5 px-4 rounded-lg bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-xs">
-              <span>📥</span> 結合してダウンロード
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <!-- ==================== 2. 分割 (Split) 画面 ==================== -->
-    <div id="view-split" class="tab-content space-y-6 hidden">
-      <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-amber-900">
-        <span class="font-bold">【PDF分割モード】</span> 指定ページ範囲の抽出、または1ページずつの個別分割（ZIP）を行います。
+        </section>
       </div>
 
-      <!-- 上: ファイル選択/D&D -->
-      <section class="bg-white rounded-xl border-2 border-dashed border-slate-300 hover:border-amber-400 p-8 text-center transition cursor-pointer" id="split-dropzone" onclick="document.getElementById('split-file-input').click()">
-        <!-- 追加 onclick="event.stopPropagation()" 防止事件冒泡 -->
-        <input type="file" id="split-file-input" accept="application/pdf" class="hidden" onchange="handleSplitFile(this.files[0])" onclick="event.stopPropagation()">
-        <div class="text-4xl mb-2">✂️</div>
-        <p class="text-slate-700 font-semibold text-base mb-1">分割するPDFファイルをドラッグ＆ドロップ</p>
-        <p class="text-slate-400 text-xs mb-3">またはクリックしてファイルを選択</p>
-        <span class="inline-block px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs">
-          ファイルを選択する
-        </span>
-      </section>
-
-      <!-- 中: ページプレビュー & 分割モード設定 -->
-      <section id="split-config-section" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hidden">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-          <div>
-            <h3 class="font-bold text-slate-800 text-sm" id="split-doc-name">-</h3>
-            <p class="text-xs text-slate-500" id="split-doc-info">全 0 ページ</p>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="selectSplitMode('range')" id="mode-range-btn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 text-white">範囲指定</button>
-            <button onclick="selectSplitMode('all-single')" id="mode-all-btn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700">1ページずつ個別 (ZIP)</button>
-          </div>
+      <!-- ==================== 2. 分割 (Split) 画面 ==================== -->
+      <div id="view-split" class="tab-content hidden flex-1 flex flex-col p-6 gap-6">
+        <div class="shrink-0 bg-white border border-gray-200 rounded p-3 text-sm text-gray-600 shadow-sm flex items-center">
+          <span class="font-bold mr-2 text-gray-800">【PDF分割モード】</span> 指定ページ範囲の抽出、または1ページずつの個別分割（ZIP）を行います。
         </div>
 
-        <div id="split-range-controls" class="mb-4">
-          <label class="block text-xs font-semibold text-slate-700 mb-1">抽出するページ範囲（例: 1-3, 5, 7-10）</label>
-          <input type="text" id="split-range-input" placeholder="1-3, 5" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm" oninput="updateSplitPreview()">
-          <p class="text-xs text-slate-400 mt-1">※カンマ区切りまたはハイフンで指定可能。下のカードをクリックして選択もできます。</p>
-        </div>
-
-        <div class="mt-4">
-          <p class="text-xs font-bold text-slate-700 mb-2">ページ一覧（クリックで抽出対象を切替）:</p>
-          <div id="split-thumbnails-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-96 overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-200"></div>
-        </div>
-      </section>
-
-      <!-- 下: 出力設定 & 分割実行 -->
-      <section class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-        <h2 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-          <span>💾</span> 出力設定 ＆ 分割実行
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div class="md:col-span-2">
-            <label class="block text-xs font-semibold text-slate-700 mb-1">出力ファイル名</label>
-            <input type="text" id="split-filename" value="split_document.pdf" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm">
+        <!-- ファイル選択/D&D -->
+        <section class="shrink-0 w-full h-32 border-2 border-dashed border-gray-300 rounded-xl bg-white flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors" id="split-dropzone" onclick="document.getElementById('split-file-input').click()">
+          <input type="file" id="split-file-input" accept="application/pdf" class="hidden" onchange="handleSplitFile(this.files[0])" onclick="event.stopPropagation()">
+          <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-2 pointer-events-none">
+            <span class="text-xl font-bold">+</span>
           </div>
-          <div>
-            <button id="split-submit-btn" onclick="executeSplit()" disabled class="w-full py-2.5 px-4 rounded-lg bg-amber-600 text-white font-semibold text-sm hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-xs">
-              <span>✂️</span> 分割してダウンロード
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
+          <p class="text-sm font-semibold pointer-events-none text-gray-800">ファイルを追加する</p>
+          <p class="text-xs text-gray-400 mt-1 pointer-events-none">ドラッグ＆ドロップでも追加できます</p>
+        </section>
 
-    <!-- ==================== 3. ページ編集 (Edit) 画面 ==================== -->
-    <div id="view-edit" class="tab-content space-y-6 hidden">
-      <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-sm text-emerald-900">
-        <span class="font-bold">【ページ編集モード】</span> ページの並び替え（D&D/移動）、90°単位の回転、不要ページの削除が行えます。
+        <!-- ページプレビュー & 分割モード設定 -->
+        <section id="split-config-section" class="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm hidden min-h-[300px] overflow-hidden">
+          <div class="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl shrink-0">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-gray-800 text-sm" id="split-doc-name">-</h3>
+                <p class="text-xs text-gray-500" id="split-doc-info">全 0 ページ</p>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="selectSplitMode('range')" id="mode-range-btn" class="px-3 py-1.5 rounded text-xs font-bold bg-gray-800 text-white shadow-sm transition">範囲指定</button>
+                <button onclick="selectSplitMode('all-single')" id="mode-all-btn" class="px-3 py-1.5 rounded text-xs font-bold bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 transition">1ページずつ個別 (ZIP)</button>
+              </div>
+            </div>
+
+            <div id="split-range-controls" class="mb-2">
+              <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">抽出するページ範囲（例: 1-3, 5, 7-10）</label>
+              <input type="text" id="split-range-input" placeholder="1-3, 5" class="w-full px-3.5 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-red-500 transition" oninput="updateSplitPreview()">
+              <p class="text-[10px] text-gray-400 mt-1">※カンマ区切りまたはハイフンで指定可能。下のカードをクリックして選択もできます。</p>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-4 bg-[#f8f9fa]">
+            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">ページ一覧（クリックで抽出対象を切替）</p>
+            <div id="split-thumbnails-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4"></div>
+          </div>
+        </section>
+
+        <!-- 出力設定 & 分割実行 -->
+        <section class="shrink-0 bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <h2 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+            出力設定 ＆ 分割実行
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">出力ファイル名</label>
+              <input type="text" id="split-filename" value="split_document.pdf" class="w-full px-3.5 py-2 border border-gray-300 rounded bg-gray-50 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition">
+            </div>
+            <div>
+              <button id="split-submit-btn" onclick="executeSplit()" disabled class="w-full h-[38px] rounded bg-red-600 text-white font-bold text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]">
+                分割してダウンロード
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <!-- 上: ファイル選択/D&D -->
-      <section class="bg-white rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 p-8 text-center transition cursor-pointer" id="edit-dropzone" onclick="document.getElementById('edit-file-input').click()">
-        <!-- 追加 onclick="event.stopPropagation()" 防止事件冒泡 -->
-        <input type="file" id="edit-file-input" accept="application/pdf" multiple class="hidden" onchange="handleEditFiles(this.files)" onclick="event.stopPropagation()">
-        <div class="text-4xl mb-2">🔄</div>
-        <p class="text-slate-700 font-semibold text-base mb-1">編集するPDFファイルをドラッグ＆ドロップ</p>
-        <p class="text-slate-400 text-xs mb-3">複数ファイルの追加読み込みも可能</p>
-        <span class="inline-block px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs">
-          ファイルを選択する
-        </span>
-      </section>
-
-      <!-- 中: ページグリッド ＆ 操作ツールバー -->
-      <section id="edit-pages-section" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hidden">
-        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 mb-4">
-          <div class="flex items-center gap-2">
-            <span class="font-bold text-slate-800 text-sm">全 <span id="edit-page-total">0</span> ページ</span>
-            <span class="text-xs text-slate-400">（カードをドラッグして順序入替可能）</span>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 text-xs">
-            <button onclick="rotateAllPages(90)" class="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">
-              ↷ 全て右90°回転
-            </button>
-            <button onclick="rotateAllPages(-90)" class="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">
-              ↶ 全て左90°回転
-            </button>
-            <button onclick="clearAllEditPages()" class="px-2.5 py-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium">
-              🗑 全消去
-            </button>
-          </div>
+      <!-- ==================== 3. ページ編集 (Edit) 画面 ==================== -->
+      <div id="view-edit" class="tab-content hidden flex-1 flex flex-col p-6 gap-6">
+        <div class="shrink-0 bg-white border border-gray-200 rounded p-3 text-sm text-gray-600 shadow-sm flex items-center">
+          <span class="font-bold mr-2 text-gray-800">【ページ編集モード】</span> ページの並び替え（D&D/移動）、90°単位の回転、不要ページの削除が行えます。
         </div>
 
-        <div id="edit-pages-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-2 min-h-[160px] bg-slate-50 rounded-xl border border-slate-200"></div>
-      </section>
-
-      <!-- 下: 出力設定 & ダウンロード -->
-      <section class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-        <h2 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-          <span>💾</span> 出力設定 ＆ 保存実行
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div class="md:col-span-2">
-            <label class="block text-xs font-semibold text-slate-700 mb-1">出力ファイル名</label>
-            <input type="text" id="edit-filename" value="edited_document.pdf" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm">
+        <!-- ファイル選択/D&D -->
+        <section class="shrink-0 w-full h-32 border-2 border-dashed border-gray-300 rounded-xl bg-white flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors" id="edit-dropzone" onclick="document.getElementById('edit-file-input').click()">
+          <input type="file" id="edit-file-input" accept="application/pdf" multiple class="hidden" onchange="handleEditFiles(this.files)" onclick="event.stopPropagation()">
+          <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-2 pointer-events-none">
+            <span class="text-xl font-bold">+</span>
           </div>
-          <div>
-            <button id="edit-submit-btn" onclick="executeEditSave()" disabled class="w-full py-2.5 px-4 rounded-lg bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-xs">
-              <span>📥</span> 編集内容を保存してダウンロード
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
+          <p class="text-sm font-semibold pointer-events-none text-gray-800">ファイルを追加する</p>
+          <p class="text-xs text-gray-400 mt-1 pointer-events-none">複数ファイルの追加読み込みも可能</p>
+        </section>
 
-  </main>
+        <!-- ページグリッド ＆ 操作ツールバー -->
+        <section id="edit-pages-section" class="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm hidden min-h-[300px] overflow-hidden">
+          <div class="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3 bg-gray-50 rounded-t-xl shrink-0">
+            <div class="flex items-center gap-4">
+              <span class="text-sm font-bold text-gray-800">Workspace: <span class="text-gray-500 font-normal"><span id="edit-page-total">0</span> pages total</span></span>
+              <div class="h-4 w-px bg-gray-300"></div>
+              <span class="text-[10px] text-gray-400">カードをドラッグして順序入替可能</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="rotateAllPages(90)" class="text-[10px] px-2 py-1 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 text-gray-600 font-medium transition">
+                ↻ 全て右回転
+              </button>
+              <button onclick="rotateAllPages(-90)" class="text-[10px] px-2 py-1 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 text-gray-600 font-medium transition">
+                ↺ 全て左回転
+              </button>
+              <button onclick="clearAllEditPages()" class="text-[10px] px-2 py-1 bg-white border border-gray-300 rounded shadow-sm hover:bg-red-50 text-red-600 font-medium transition">
+                全消去
+              </button>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-6 bg-[#f8f9fa]">
+            <div id="edit-pages-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 content-start"></div>
+          </div>
+        </section>
+
+        <!-- 出力設定 & ダウンロード -->
+        <section class="shrink-0 bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <h2 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+            出力設定 ＆ 保存実行
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">出力ファイル名</label>
+              <input type="text" id="edit-filename" value="edited_document.pdf" class="w-full px-3.5 py-2 border border-gray-300 rounded bg-gray-50 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition">
+            </div>
+            <div>
+              <button id="edit-submit-btn" onclick="executeEditSave()" disabled class="w-full h-[38px] rounded bg-red-600 text-white font-bold text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]">
+                保存してダウンロード
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
 
   <!-- 処理ステータス通知 -->
-  <div id="status-toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2">
+  <div id="status-toast" class="fixed bottom-5 right-5 bg-[#1a1a1a] text-white px-4 py-3 rounded shadow-lg text-sm font-medium transition duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2 border border-gray-700">
     <span id="toast-msg">処理中...</span>
   </div>
 
   <script>
+    // ----------------------------------------------------
+    // 【初期化チェック】ライブラリが正常にロードされたか確認
+    // ----------------------------------------------------
+    document.addEventListener("DOMContentLoaded", () => {
+      const missingLibs = [];
+      if (typeof window.PDFLib === 'undefined') missingLibs.push('PDFLib (pdf-lib)');
+      if (typeof window.pdfjsLib === 'undefined') missingLibs.push('pdfjsLib (PDF.js)');
+      if (typeof window.JSZip === 'undefined') missingLibs.push('JSZip');
+
+      if (missingLibs.length > 0) {
+        const errorMsg = '【初期化エラー】以下のライブラリが読み込めませんでした：\n' + missingLibs.join('\n');
+        console.error(errorMsg);
+        alert(errorMsg + '\n\nインターネット接続を確認するか、CDNのURLが正しいか確認してください。');
+        
+        // エラー発生時は全体を半透明にして操作不可にする
+        document.body.style.pointerEvents = 'none';
+        document.body.style.opacity = '0.5';
+      }
+    });
+
     let currentTab = 'merge';
     let mergeFiles = [];
     let splitFile = null;
@@ -254,7 +285,6 @@
       const text = document.getElementById('toast-msg');
       text.textContent = msg;
       toast.classList.remove('opacity-0', 'pointer-events-none');
-      // 避免之前的 timeout 蓋掉新的 toast
       if(window.toastTimeout) clearTimeout(window.toastTimeout);
       if (duration > 0) {
         window.toastTimeout = setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), duration);
@@ -268,10 +298,10 @@
         const view = document.getElementById('view-' + t);
         if (t === tab) {
           view.classList.remove('hidden');
-          btn.className = 'tab-btn px-5 py-2.5 font-bold text-sm border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-2 transition';
+          btn.className = 'w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-3 bg-gray-100 text-red-600 transition';
         } else {
           view.classList.add('hidden');
-          btn.className = 'tab-btn px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 transition';
+          btn.className = 'w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-3 text-gray-600 hover:bg-gray-50 transition';
         }
       });
     }
@@ -291,11 +321,11 @@
     // ==================== 結合ロジック ====================
     async function handleMergeFiles(files) {
       if (!files || files.length === 0) return;
-      showToast('読み込み中...', 0); // 永久顯示直到處理完
+      showToast('読み込み中...', 0);
       document.body.style.cursor = 'wait';
       
       try {
-        const newFiles = []; // 使用暫存陣列，避免處理途中狀態不一致
+        const newFiles = [];
         for (const file of files) {
           if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) continue;
           const arrayBuffer = await file.arrayBuffer();
@@ -307,7 +337,6 @@
             pages: pdfDoc.getPageCount()
           });
         }
-        // 處理完畢後，一次性追加到清單中
         mergeFiles.push(...newFiles);
         renderMergeList();
         showToast('ファイルの追加が完了しました', 3000);
@@ -315,7 +344,6 @@
         alert('読み込みエラー: ' + err.message);
         showToast('エラーが発生しました', 3000);
       } finally {
-        // 重點修正：徹底清空 input.value，確保下次選相同檔案能觸發
         document.getElementById('merge-file-input').value = '';
         document.body.style.cursor = 'default';
       }
@@ -341,19 +369,20 @@
 
       mergeFiles.forEach((file, idx) => {
         const li = document.createElement('li');
-        li.className = 'flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200';
+        li.className = 'flex items-center justify-between p-3 bg-white rounded border border-gray-200 shadow-sm';
         li.innerHTML = `
           <div class="flex items-center gap-3">
-            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">${idx + 1}</span>
+            <span class="w-6 h-6 rounded bg-gray-100 text-gray-500 font-bold text-[10px] flex items-center justify-center border border-gray-200">${idx + 1}</span>
             <div>
-              <p class="text-sm font-semibold text-slate-800">${file.name}</p>
-              <p class="text-xs text-slate-400">${file.pages} ページ / ${(file.size / 1024).toFixed(1)} KB</p>
+              <p class="text-xs font-bold text-gray-800 truncate max-w-[200px] sm:max-w-xs">${file.name}</p>
+              <p class="text-[10px] text-gray-400 mt-0.5">${file.pages} ページ • ${(file.size / 1024).toFixed(1)} KB</p>
             </div>
           </div>
           <div class="flex items-center gap-1">
-            <button onclick="moveMergeFile(${idx}, -1)" class="p-1.5 rounded hover:bg-slate-200 text-xs" ${idx === 0 ? 'disabled' : ''}>▲</button>
-            <button onclick="moveMergeFile(${idx}, 1)" class="p-1.5 rounded hover:bg-slate-200 text-xs" ${idx === mergeFiles.length - 1 ? 'disabled' : ''}>▼</button>
-            <button onclick="removeMergeFile(${idx})" class="p-1.5 rounded hover:bg-rose-100 text-rose-600 text-xs">✕</button>
+            <button onclick="moveMergeFile(${idx}, -1)" class="w-6 h-6 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 text-gray-500 text-xs transition" ${idx === 0 ? 'disabled style="opacity: 0.3;"' : ''}>▲</button>
+            <button onclick="moveMergeFile(${idx}, 1)" class="w-6 h-6 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 text-gray-500 text-xs transition" ${idx === mergeFiles.length - 1 ? 'disabled style="opacity: 0.3;"' : ''}>▼</button>
+            <div class="w-px h-4 bg-gray-200 mx-1"></div>
+            <button onclick="removeMergeFile(${idx})" class="w-6 h-6 flex items-center justify-center rounded border border-transparent hover:bg-red-50 text-red-500 text-xs transition">✕</button>
           </div>
         `;
         list.appendChild(li);
@@ -423,7 +452,6 @@
         alert('読み込みエラー: ' + err.message);
         showToast('エラーが発生しました', 3000);
       } finally {
-        // 重點修正：清空 input.value
         document.getElementById('split-file-input').value = '';
         document.body.style.cursor = 'default';
       }
@@ -438,22 +466,34 @@
       for (let i = 1; i <= splitPagesCount; i++) {
         const card = document.createElement('div');
         card.id = `split-thumb-${i}`;
-        card.className = 'bg-white p-2 rounded-lg border border-slate-200 cursor-pointer text-center relative hover:border-amber-400';
+        // High Density Card styling
+        card.className = 'aspect-[3/4] bg-white border border-gray-200 rounded shadow-sm relative group cursor-pointer hover:border-red-400 transition-colors';
         card.onclick = () => togglePageRangeSelection(i);
         
         const canvas = document.createElement('canvas');
-        canvas.className = 'w-full h-auto rounded border border-slate-100 shadow-xs mb-1';
+        canvas.className = 'w-full h-full object-contain p-1';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'h-full flex flex-col p-1.5';
+        
+        const imgWrapper = document.createElement('div');
+        imgWrapper.className = 'flex-1 bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden relative';
+        
         const page = await pdf.getPage(i);
         const viewport = page.getViewport({ scale: 0.3 });
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
 
-        card.appendChild(canvas);
-        const label = document.createElement('p');
-        label.className = 'text-[11px] font-bold text-slate-600';
-        label.textContent = `P.${i}`;
-        card.appendChild(label);
+        imgWrapper.appendChild(canvas);
+        contentDiv.appendChild(imgWrapper);
+        
+        const numBadge = document.createElement('div');
+        numBadge.className = 'absolute top-2 right-2 w-5 h-5 bg-black/50 text-white text-[10px] flex items-center justify-center rounded-full';
+        numBadge.textContent = i;
+        
+        card.appendChild(numBadge);
+        card.appendChild(contentDiv);
         grid.appendChild(card);
       }
     }
@@ -478,15 +518,15 @@
       const submitBtn = document.getElementById('split-submit-btn');
 
       if (mode === 'range') {
-        rBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 text-white';
-        aBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700';
+        rBtn.className = 'px-3 py-1.5 rounded text-xs font-bold bg-gray-800 text-white shadow-sm transition';
+        aBtn.className = 'px-3 py-1.5 rounded text-xs font-bold bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 transition';
         rangeCtrl.classList.remove('hidden');
-        submitBtn.textContent = '✂️ 範囲を抽出してダウンロード';
+        submitBtn.innerHTML = '範囲を抽出してダウンロード';
       } else {
-        aBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 text-white';
-        rBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700';
+        aBtn.className = 'px-3 py-1.5 rounded text-xs font-bold bg-gray-800 text-white shadow-sm transition';
+        rBtn.className = 'px-3 py-1.5 rounded text-xs font-bold bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 transition';
         rangeCtrl.classList.add('hidden');
-        submitBtn.textContent = '📦 全ページ個別分割 (ZIPダウンロード)';
+        submitBtn.innerHTML = '全ページ個別分割 (ZIPダウンロード)';
       }
     }
 
@@ -513,9 +553,9 @@
         const el = document.getElementById(`split-thumb-${i}`);
         if (el) {
           if (selectedIndices.includes(i - 1)) {
-            el.className = 'bg-amber-50 p-2 rounded-lg border-2 border-amber-500 cursor-pointer text-center relative';
+            el.className = 'aspect-[3/4] bg-white rounded shadow-sm relative group cursor-pointer transition-colors outline outline-2 outline-blue-500 border border-transparent';
           } else {
-            el.className = 'bg-white p-2 rounded-lg border border-slate-200 cursor-pointer text-center relative hover:border-amber-400';
+            el.className = 'aspect-[3/4] bg-white border border-gray-200 rounded shadow-sm relative group cursor-pointer hover:border-red-400 transition-colors';
           }
         }
       }
@@ -571,7 +611,7 @@
       document.body.style.cursor = 'wait';
 
       try {
-        const newPages = []; // 暫存陣列，避免處理中途渲染破壞陣列狀態
+        const newPages = [];
         for (const file of files) {
           if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) continue;
           const arrayBuffer = await file.arrayBuffer();
@@ -593,11 +633,11 @@
               sourceData: arrayBuffer,
               originalIndex: i,
               rotation: page.getRotation().angle || 0,
-              thumbnail: canvas.toDataURL('image/jpeg', 0.8)
+              thumbnail: canvas.toDataURL('image/jpeg', 0.8),
+              filename: file.name
             });
           }
         }
-        // 處理完畢後，一次性追加到現有頁面陣列後方
         editPages.push(...newPages);
         renderEditGrid();
         showToast('ページの追加が完了しました', 3000);
@@ -605,7 +645,6 @@
         alert('読み込みエラー: ' + err.message);
         showToast('エラーが発生しました', 3000);
       } finally {
-        // 重點修正：清空 input.value
         document.getElementById('edit-file-input').value = '';
         document.body.style.cursor = 'default';
       }
@@ -631,7 +670,8 @@
 
       editPages.forEach((p, idx) => {
         const card = document.createElement('div');
-        card.className = 'page-card bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs flex flex-col items-center select-none';
+        // High density card styling
+        card.className = 'page-card aspect-[3/4] bg-white border border-gray-200 rounded shadow-sm relative group cursor-move';
         card.draggable = true;
         card.ondragstart = (e) => { draggedIndex = idx; e.dataTransfer.setData('text/plain', idx); };
         card.ondragover = (e) => { e.preventDefault(); card.classList.add('drag-over'); };
@@ -647,18 +687,20 @@
         };
 
         card.innerHTML = `
-          <div class="w-full flex items-center justify-between text-xs font-bold text-slate-500 mb-1.5 px-1">
-            <span>#${idx + 1}</span>
-            <span class="text-[10px] text-slate-400">${p.rotation}°</span>
+          <div class="absolute top-2 right-2 w-5 h-5 bg-black/50 text-white text-[10px] flex items-center justify-center rounded-full z-10">${idx + 1}</div>
+          <div class="absolute top-2 left-2 text-[8px] bg-white/80 px-1 rounded text-gray-500 z-10 border border-gray-200 shadow-sm backdrop-blur-sm">${p.rotation}°</div>
+          <div class="h-full flex flex-col p-1.5">
+            <div class="flex-1 bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
+              <img src="${p.thumbnail}" style="transform: rotate(${p.rotation}deg);" class="w-full h-full object-contain transition-transform duration-200" draggable="false" />
+            </div>
+            <div class="mt-1.5 text-[9px] truncate text-gray-500 font-medium px-1 text-center" title="${p.filename || 'Page'}">${p.filename || 'Page'}</div>
           </div>
-          <div class="relative w-full aspect-[3/4] bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center mb-2 border border-slate-200">
-            <img src="${p.thumbnail}" style="transform: rotate(${p.rotation}deg);" class="max-w-full max-h-full object-contain transition-transform duration-200" />
-          </div>
-          <div class="flex items-center justify-center gap-1 w-full text-xs">
-            <button onclick="rotatePage(${idx}, -90)" class="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700" title="左に90°回転">↶</button>
-            <button onclick="rotatePage(${idx}, 90)" class="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700" title="右に90°回転">↷</button>
-            <button onclick="duplicatePage(${idx})" class="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700" title="複製">📋</button>
-            <button onclick="deletePage(${idx})" class="p-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-600" title="削除">✕</button>
+          <!-- Hover Overlay -->
+          <div class="absolute inset-0 bg-white/40 backdrop-blur-[1px] flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+            <button onclick="rotatePage(${idx}, -90)" class="w-7 h-7 bg-white rounded-full shadow border border-gray-200 text-gray-700 flex items-center justify-center hover:text-red-600 text-xs transition" title="左回転">↺</button>
+            <button onclick="rotatePage(${idx}, 90)" class="w-7 h-7 bg-white rounded-full shadow border border-gray-200 text-gray-700 flex items-center justify-center hover:text-red-600 text-xs transition" title="右回転">↻</button>
+            <button onclick="duplicatePage(${idx})" class="w-7 h-7 bg-white rounded-full shadow border border-gray-200 text-gray-700 flex items-center justify-center hover:text-red-600 text-[10px] transition" title="複製">📋</button>
+            <button onclick="deletePage(${idx})" class="w-7 h-7 bg-white rounded-full shadow border border-gray-200 text-red-500 flex items-center justify-center hover:bg-red-50 text-xs transition" title="削除">✕</button>
           </div>
         `;
         grid.appendChild(card);
@@ -719,12 +761,11 @@
       }
     }
 
-    // ドラッグ＆ドロップ登録 (バグ修正版)
+    // ドラッグ＆ドロップ登録
     ['merge-dropzone', 'split-dropzone', 'edit-dropzone'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
 
-      // ブラウザ標準のファイル開き動作を抑止
       ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         el.addEventListener(eventName, (e) => {
           e.preventDefault();
@@ -732,11 +773,11 @@
         }, false);
       });
 
-      el.addEventListener('dragover', () => el.classList.add('drag-over'));
-      el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+      el.addEventListener('dragover', () => el.classList.add('border-red-400', 'bg-red-50'));
+      el.addEventListener('dragleave', () => el.classList.remove('border-red-400', 'bg-red-50'));
       
       el.addEventListener('drop', (e) => {
-        el.classList.remove('drag-over');
+        el.classList.remove('border-red-400', 'bg-red-50');
         const dt = e.dataTransfer;
         const files = dt.files;
 
